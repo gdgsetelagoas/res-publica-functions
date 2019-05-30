@@ -130,3 +130,37 @@ exports.updateRemoveReplies = functions.firestore.document('replies/{replyId}')
             });
         }
     });
+
+
+exports.updateAddFollows = functions.firestore.document('followers/{followId}')
+    .onCreate((snap, context) => {
+        let follow = snap.data();
+        firestore.runTransaction(async (trans) => {
+            let userRef = firestore.collection('users').doc(follow.user_id);
+            const userSnap = await trans.get(userRef);
+            let newCount = (userSnap.data().num_follows || 0) + 1;
+            return trans.update(userRef, { 'num_follows': newCount });
+        });
+        firestore.runTransaction(async (trans) => {
+            let pubRef = firestore.collection('publications').doc(follow.publication_id);
+            const pubSnap = await trans.get(pubRef);
+            let newCount = (pubSnap.data().num_followers || 1) + 1;
+            return trans.update(pubRef, { 'num_followers': newCount });
+        });
+    });
+exports.updateRemoveFollows = functions.firestore.document('followers/{followId}')
+    .onDelete((snap, context) => {
+        let follow = snap.data();
+        firestore.runTransaction(async (trans) => {
+            let userRef = firestore.collection('users').doc(follow.user_id);
+            const userSnap = await trans.get(userRef);
+            let newCount = (userSnap.data().num_follows || 1) - 1;
+            return trans.update(userRef, { 'num_follows': newCount });
+        });
+        firestore.runTransaction(async (trans) => {
+            let pubRef = firestore.collection('publications').doc(follow.publication_id);
+            const pubSnap = await trans.get(pubRef);
+            let newCount = (pubSnap.data().num_followers || 1) - 1;
+            return trans.update(pubRef, { 'num_followers': newCount });
+        });
+    });
